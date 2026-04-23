@@ -10,6 +10,7 @@ import java.util.Objects;
 
 import static java.lang.String.join;
 
+/** Параметры конкретного target */
 public final class TargetConfig implements Configuration {
 
     private final TargetItem targetItem;

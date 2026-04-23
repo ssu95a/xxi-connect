@@ -14,7 +14,7 @@ public interface TechCredentialsProvider extends Supplier<PasswordAuthentication
     /** */
     static TechCredentialsProvider createDefault( Config config ) {
 
-        String mode = config.getString("auth.mode","xxi");
+        String mode = config.getString("tech.cred.auth.mode","xxi");
 
         return switch (mode) {
             case "xxi"     -> new XXIPseudoCredentialsProvider();

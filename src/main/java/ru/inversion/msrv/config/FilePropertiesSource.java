@@ -40,8 +40,8 @@ public final class FilePropertiesSource implements ConfigSource {
     }
 
     @Override
-    public void snapshotTo(Predicate<String> filter, Map<String, Object> snapshot) {
-
+    public void snapshotTo( Predicate<String> filter, Map<String, Object> snapshot )
+    {
         Properties p = properties;
         if (p == null) {
             synchronized (this) {
@@ -52,7 +52,7 @@ public final class FilePropertiesSource implements ConfigSource {
             }
         }
 
-        for (String k : p.stringPropertyNames()) {
+        for( String k : p.stringPropertyNames() ) {
             if (k != null && filter.test(k)) {
                 snapshot.put(k, p.getProperty(k));
             }

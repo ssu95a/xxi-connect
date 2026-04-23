@@ -65,9 +65,10 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
      * In-flight соединения могут дожить, новые будут пересозданы.
      */
     public void softReset() {
-        HikariDataSource hds = dataSourceRef.get();
 
-        if (hds == null) {
+        final HikariDataSource hds = dataSourceRef.get();
+
+        if( hds == null ) {
             logger.info("pool.soft_reset.skip reason=closed");
             return;
         }
@@ -98,6 +99,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
      * Не перечитывает tlp snapshot.
      */
     public boolean hardReset() {
+
         final HikariDataSource fresh;
         try {
             fresh = createAndInitDataSource(config, techProvider);
@@ -295,7 +297,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
         hc.setUsername( techAuth.getUserName() );
         hc.setPassword( String.valueOf( techAuth.getPassword() ) );
 
-        hc.setPoolName( value(config, "pool.name", String.class, "xxi-connect-pool") );
+        hc.setPoolName( value( config, "pool.name", String.class, "xxi-connect-pool") );
 
         hc.setMaximumPoolSize(value(config, "pool.maximumPoolSize", Integer.class, 50));
         hc.setMinimumIdle    (value(config, "pool.minimumIdle", Integer.class, 5));
@@ -309,7 +311,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
             hc.setLeakDetectionThreshold(leak);
 
         String testQuery = value(config, "pool.connectionTestQuery", String.class, S.EMPTY_STRING );
-        if( testQuery != null && !testQuery.isBlank() )
+        if( !S.isNullOrEmpty(testQuery) )
             hc.setConnectionTestQuery(testQuery);
 
         applyDataSourceProperties( hc, config);
