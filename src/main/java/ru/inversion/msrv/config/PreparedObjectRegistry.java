@@ -56,15 +56,13 @@ public final class PreparedObjectRegistry implements AutoCloseable {
 
         final RegexpState state = objects.get(cacheKey);
 
-        if (state != null)
+        if( state != null )
         {
-            if( state.wrongPattern() != null && state.wrongPattern().equals(normalized) ) {
+            if( state.wrongPattern() != null && state.wrongPattern().equals(normalized) )
                 return state.compiled();
-            }
 
-            if(normalized.equals(state.matchPattern())) {
+            if( normalized.equals(state.matchPattern()) )
                 return state.compiled();
-            }
         }
 
         final Pattern compiled;
