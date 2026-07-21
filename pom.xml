@@ -19,7 +19,7 @@
         <!-- Java -->
         <maven.compiler.release>17</maven.compiler.release>
 
-        <jetty.version>12.1.6</jetty.version>
+        <jetty.version>12.1.7</jetty.version>
         <hikari.version>5.1.0</hikari.version>
         <pgjdbc.version>42.7.10</pgjdbc.version>
         <oracle.version>23.26.1.0.0</oracle.version>
@@ -28,7 +28,7 @@
         <jaxb.runtime.version>4.0.5</jaxb.runtime.version>
 
         <slf4j.version>2.0.17</slf4j.version>
-        <logback.version>1.5.13</logback.version>
+        <logback.version>1.5.34</logback.version>
 
         <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
         <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
