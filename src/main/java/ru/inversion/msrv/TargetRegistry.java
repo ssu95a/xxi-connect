@@ -162,7 +162,6 @@ public final class TargetRegistry implements AutoCloseable {
         throw new UnknownAliasException( rawAlias, nrmAlias );
     }
 
-
     /** */
     private PasswordAuthentication credentialsFor( TargetItem target )
     {
@@ -178,12 +177,9 @@ public final class TargetRegistry implements AutoCloseable {
 
         final boolean hasPassword = targetPassword.length != 0;
 
-        // Полный target override:
-        // глобальные credentials вообще не трогаем.
         if( hasUser && hasPassword )
-            return targetAuth; //new PasswordAuthentication( targetUser, targetPassword );
+            return targetAuth;
 
-        // Legacy fallback нужен только для отсутствующих частей.
         final PasswordAuthentication techAuth = techAuthenticator.get();
 
         return new PasswordAuthentication( hasUser ? targetUser : techAuth.getUserName(), hasPassword ? targetPassword : techAuth.getPassword() );
@@ -200,7 +196,7 @@ public final class TargetRegistry implements AutoCloseable {
             final TargetConfig targetConfig = new TargetConfig( t, config, tlp );
 
             logger.info("pool.create.start alias={} vendor={}", t.nrmAlias(), t.vendorDb());
-            PoolMan created = PoolMan.createAndInit( targetConfig, ()->credentialsFor( t ) );
+            PoolMan created = PoolMan.createAndInit( targetConfig, () -> credentialsFor(t) );
             logger.info("pool.create.ok alias={} vendor={}", t.nrmAlias(), t.vendorDb());
 
             return created;
