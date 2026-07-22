@@ -41,7 +41,7 @@ public class TargetItem {
     public VendorDbEnum vendorDb() { return vendorDb; }
 
     /** */
-    public PasswordAuthentication auth( ) {
+    PasswordAuthentication auth( ) {
         return auth;
     }
 

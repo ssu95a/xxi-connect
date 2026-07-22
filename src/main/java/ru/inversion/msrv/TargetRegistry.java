@@ -164,23 +164,30 @@ public final class TargetRegistry implements AutoCloseable {
 
 
     /** */
-    private TechCredentialsProvider proxyCredentialsProvider( PasswordAuthentication trgtAuth )
+    private PasswordAuthentication credentialsFor( TargetItem target )
     {
-        if( trgtAuth == null )
-            return techAuthenticator;
+        final PasswordAuthentication targetAuth = target.auth();
 
-        return new TechCredentialsProvider() {
-            @Override
-            public PasswordAuthentication get( ) {
-                PasswordAuthentication techAuth = techAuthenticator.get();
-                return new PasswordAuthentication(
-                    S.isNullOrEmpty( trgtAuth.getUserName() ) ? techAuth.getUserName() : trgtAuth.getUserName(),
-                    trgtAuth.getPassword().length == 0 ?  techAuth.getPassword() : trgtAuth.getPassword()
-                );
-            }
-        };
+        if( targetAuth == null )
+            return techAuthenticator.get();
+
+        final String targetUser = targetAuth.getUserName();
+        final char[] targetPassword = targetAuth.getPassword();
+
+        final boolean hasUser = !S.isNullOrEmpty(targetUser);
+
+        final boolean hasPassword = targetPassword.length != 0;
+
+        // Полный target override:
+        // глобальные credentials вообще не трогаем.
+        if( hasUser && hasPassword )
+            return targetAuth; //new PasswordAuthentication( targetUser, targetPassword );
+
+        // Legacy fallback нужен только для отсутствующих частей.
+        final PasswordAuthentication techAuth = techAuthenticator.get();
+
+        return new PasswordAuthentication( hasUser ? targetUser : techAuth.getUserName(), hasPassword ? targetPassword : techAuth.getPassword() );
     }
-
     /**
      * TargetContext.
      */
@@ -193,7 +200,7 @@ public final class TargetRegistry implements AutoCloseable {
             final TargetConfig targetConfig = new TargetConfig( t, config, tlp );
 
             logger.info("pool.create.start alias={} vendor={}", t.nrmAlias(), t.vendorDb());
-            PoolMan created = PoolMan.createAndInit( targetConfig, proxyCredentialsProvider( t.auth() ) );
+            PoolMan created = PoolMan.createAndInit( targetConfig, ()->credentialsFor( t ) );
             logger.info("pool.create.ok alias={} vendor={}", t.nrmAlias(), t.vendorDb());
 
             return created;
@@ -341,7 +348,7 @@ public final class TargetRegistry implements AutoCloseable {
 
         final VendorDbEnum vendorDb = VendorDbEnum.fromJdbcUrl( ti.jdbcUrl() );
 
-        if( vendorDb != null && vendorDb != ti.vendorDb() )
+        if( vendorDb != ti.vendorDb() )
             throw new IllegalArgumentException( "targets.xml: vendor mismatch for alias=" + ti.rawAlias() + " declared=" + ti.vendorDb() + " detected=" + vendorDb);
     }
 
@@ -350,7 +357,7 @@ public final class TargetRegistry implements AutoCloseable {
      */
     private Map<String, Object> loadDbValues( TargetItem target )
     {
-        final PasswordAuthentication pa = techAuthenticator.get();
+        final PasswordAuthentication pa = credentialsFor( target );
         final String user               = pa.getUserName();
 
         final Map<String, Object> out = new HashMap<>();
