@@ -8,6 +8,7 @@ import ru.inversion.msrv.validation.Errors;
 import ru.inversion.msrv.validation.UnknownAliasException;
 import ru.inversion.utils.Holder;
 import ru.inversion.utils.S;
+import ru.inversion.utils.U;
 import ru.inversion.utils.dco.Dco;
 import ru.inversion.utils.dco.IDco;
 
@@ -27,8 +28,8 @@ import static ru.inversion.msrv.config.Config.Namespace.BOOT;
 import static ru.inversion.msrv.validation.Errors.ErrorCode.REQUEST_TARGET_ALIAS_INVALID;
 
 /**
- * TargetRegistry
- *
+ * <h5>TargetRegistry</h5>
+ * <p>
  *  - targets.xml читается 1 раз на старте
  *  - alias -> TargetItem
  *  - xxi_tlp грузится lazy per alias и кэшируется до рестарта
@@ -39,11 +40,12 @@ public final class TargetRegistry implements AutoCloseable {
     private static final Logger logger = getLogger(MethodHandles.lookup().lookupClass());
 
     private final Config config;
-    private final TechCredentialsProvider authenticator;
+    private final TechCredentialsProvider techAuthenticator;
 
     /** */
     private final Map<String, TargetItem> targets;
     private final Set<String> disabledAliases = new HashSet<>();
+
     /** */
     private final ConcurrentHashMap<String, Map<String, Object>> tlpCache = new ConcurrentHashMap<>();
 
@@ -55,16 +57,17 @@ public final class TargetRegistry implements AutoCloseable {
 
     /**
      * Конструктор сразу грузит targets.xml.
+     * <p>
      * Любая ошибка конфигурации валит старт сервиса.
      */
-    public TargetRegistry(Config config, TechCredentialsProvider authenticator) {
+    public TargetRegistry( Config config, TechCredentialsProvider techAuthenticator )
+    {
+        this.techAuthenticator = Objects.requireNonNull( techAuthenticator, "authenticator" );
+        this.config            = Objects.requireNonNull( config, "config" );
 
-        this.authenticator = Objects.requireNonNull(authenticator, "authenticator");
-        this.config        = Objects.requireNonNull(config, "config");
-
-        final Holder<String> sa = new Holder<>();
-        this.targets        = loadTargetsFromXml( this.config, sa, disabledAliases );
-        this.smonAlias      = sa.isPresent() ? sa.get() : null;
+        final Holder<String> sa= new Holder<>();
+        this.targets           = loadTargetsFromXml( this.config, sa, disabledAliases );
+        this.smonAlias         = sa.isPresent() ? sa.get() : null;
 
         DriverManager.setLoginTimeout( config.get(BOOT.resolve("jdbc.loginTimeoutSec"), Integer.class, 5) );
 
@@ -159,6 +162,25 @@ public final class TargetRegistry implements AutoCloseable {
         throw new UnknownAliasException( rawAlias, nrmAlias );
     }
 
+
+    /** */
+    private TechCredentialsProvider proxyCredentialsProvider( PasswordAuthentication trgtAuth )
+    {
+        if( trgtAuth == null )
+            return techAuthenticator;
+
+        return new TechCredentialsProvider() {
+            @Override
+            public PasswordAuthentication get( ) {
+                PasswordAuthentication techAuth = techAuthenticator.get();
+                return new PasswordAuthentication(
+                    S.isNullOrEmpty( trgtAuth.getUserName() ) ? techAuth.getUserName() : trgtAuth.getUserName(),
+                    trgtAuth.getPassword().length == 0 ?  techAuth.getPassword() : trgtAuth.getPassword()
+                );
+            }
+        };
+    }
+
     /**
      * TargetContext.
      */
@@ -171,7 +193,7 @@ public final class TargetRegistry implements AutoCloseable {
             final TargetConfig targetConfig = new TargetConfig( t, config, tlp );
 
             logger.info("pool.create.start alias={} vendor={}", t.nrmAlias(), t.vendorDb());
-            PoolMan created = PoolMan.createAndInit(targetConfig, authenticator);
+            PoolMan created = PoolMan.createAndInit( targetConfig, proxyCredentialsProvider( t.auth() ) );
             logger.info("pool.create.ok alias={} vendor={}", t.nrmAlias(), t.vendorDb());
 
             return created;
@@ -252,10 +274,22 @@ public final class TargetRegistry implements AutoCloseable {
                 continue;
             }
 
-            final String jdbcUrl      = safeTrim(dc.e("jdbcUrl").value());
+            final String jdbcUrl      = safeTrim( dc.e("jdbcUrl").value() );
             final VendorDbEnum vendor = VendorDbEnum.of(dc.a("vendor").value());
 
-            final TargetItem ti = new TargetItem(aliasRaw, jdbcUrl, vendor);
+            PasswordAuthentication pa = null;
+
+            {
+                final String user     = safeTrim( (String)dc.getIfPresent("user") );
+                final String password = (String)dc.getIfPresent("password");
+
+                if( user != null || password != null )
+                    pa = new PasswordAuthentication( user, password == null ? new char[0] : password.toCharArray() );
+
+                dc.removeItem( "user", "password" );
+            }
+
+            final TargetItem ti = new TargetItem(aliasRaw, jdbcUrl, vendor, pa );
 
             validateTargetItem(ti);
 
@@ -307,7 +341,7 @@ public final class TargetRegistry implements AutoCloseable {
 
         final VendorDbEnum vendorDb = VendorDbEnum.fromJdbcUrl( ti.jdbcUrl() );
 
-        if( vendorDb != ti.vendorDb() )
+        if( vendorDb != null && vendorDb != ti.vendorDb() )
             throw new IllegalArgumentException( "targets.xml: vendor mismatch for alias=" + ti.rawAlias() + " declared=" + ti.vendorDb() + " detected=" + vendorDb);
     }
 
@@ -316,7 +350,7 @@ public final class TargetRegistry implements AutoCloseable {
      */
     private Map<String, Object> loadDbValues( TargetItem target )
     {
-        final PasswordAuthentication pa = authenticator.get();
+        final PasswordAuthentication pa = techAuthenticator.get();
         final String user               = pa.getUserName();
 
         final Map<String, Object> out = new HashMap<>();
@@ -359,9 +393,11 @@ public final class TargetRegistry implements AutoCloseable {
                 return Map.copyOf(out);
 
             } catch (SQLException e) {
-            /**
+
+            /*
              * xxi_tlp может отсутствовать, Для vendorDB проверяем код/SQLState "table not found".
              */
+
             if( isTableTLPMissing(e, target.vendorDb() ) ) {
                 logger.info("tlp.load.skip alias={} reason=table_not_found", target.nrmAlias());
                 return Map.of();
@@ -386,18 +422,14 @@ public final class TargetRegistry implements AutoCloseable {
     /* */
     private static void closeQuietly(PoolMan pm) {
 
-        if( pm == null ) {
-            return;
-        }
-
         try {
-            pm.close();
+            U.callIfNotNull( PoolMan::close, pm );
         } catch (Throwable t) {
-            logger.warn("pool.close.fail err={}", t.toString(), t);
+            logger.warn("pool.close.fail err={}", t.getMessage(), t);
         }
     }
 
-    private static String safeTrim(String s) {
+    private static String safeTrim( String s ) {
         return (s == null) ? null : s.trim();
     }
 }

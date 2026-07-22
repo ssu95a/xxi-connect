@@ -36,7 +36,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
     private final TechCredentialsProvider techProvider;
 
     /** */
-    private PoolMan(Configuration config, TechCredentialsProvider techProvider, HikariDataSource ds) {
+    private PoolMan( Configuration config, TechCredentialsProvider techProvider, HikariDataSource ds ) {
         this.config       = Objects.requireNonNull(config, "config");
         this.techProvider = Objects.requireNonNull(techProvider, "techProvider");
         this.dataSourceRef.set(Objects.requireNonNull(ds, "ds"));
@@ -286,13 +286,12 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
     }
 
     /** */
-    private static HikariDataSource createAndInitDataSource( Configuration config, TechCredentialsProvider techProvider ) {
-
+    private static HikariDataSource createAndInitDataSource( Configuration config, TechCredentialsProvider techProvider )
+    {
         final PasswordAuthentication techAuth = techProvider.get();
-
         final HikariConfig hc = new HikariConfig();
 
-        hc.setJdbcUrl (value(config, "pool.jdbcUrl", String.class, REQUIRED));
+        hc.setJdbcUrl ( value(config, "pool.jdbcUrl", String.class, REQUIRED) );
 
         hc.setUsername( techAuth.getUserName() );
         hc.setPassword( String.valueOf( techAuth.getPassword() ) );
@@ -311,7 +310,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
             hc.setLeakDetectionThreshold(leak);
 
         String testQuery = value(config, "pool.connectionTestQuery", String.class, S.EMPTY_STRING );
-        if( !S.isNullOrEmpty(testQuery) )
+        if(!S.isNullOrEmpty(testQuery) )
             hc.setConnectionTestQuery(testQuery);
 
         applyDataSourceProperties( hc, config);
@@ -319,8 +318,8 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
         return new HikariDataSource(hc);
     }
 
-    public static PoolMan createAndInit(Configuration config, TechCredentialsProvider authenticator) {
-        HikariDataSource ds = createAndInitDataSource(config, authenticator);
-        return new PoolMan(config, authenticator, ds);
+    public static PoolMan createAndInit(Configuration config, TechCredentialsProvider techProvider) {
+        HikariDataSource ds = createAndInitDataSource( config, techProvider );
+        return new PoolMan(config, techProvider, ds);
     }
 }

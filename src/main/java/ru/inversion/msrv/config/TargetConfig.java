@@ -29,16 +29,14 @@ public final class TargetConfig implements Configuration {
         key = Config.normalizeKey(key);
 
         String direct = directString(key);
-        if (direct != null) {
+        if( direct != null )
             return direct;
-        }
 
         Object value = tlpProperties.get(key);
-        if (value != null) {
+        if( value != null )
             return String.valueOf(value);
-        }
 
-        return config.getString(key, required);
+        return config.getString( key, required );
     }
 
     @Override

@@ -40,6 +40,7 @@ public class AuthServlet extends HttpServlet {
         int msEnc = 0;
 
         final Metrics.Scope servletSpan = Metrics.Tools.openSpan( req, "servlet", "AuthServlet", "handler_time" );
+
         final Metrics.Context mc = servletSpan.context();
 
         try( AutoCloseableList cleaners = new AutoCloseableList(true) )
@@ -135,7 +136,7 @@ public class AuthServlet extends HttpServlet {
     }
 
     /** */
-    private static <T> T requireAttr(HttpServletRequest req, String name, Class<T> type) {
+    private static <T> T requireAttr( HttpServletRequest req, String name, Class<T> type ) {
 
         final Object value = req.getAttribute(name);
 

@@ -29,6 +29,7 @@
 
         <slf4j.version>2.0.17</slf4j.version>
         <logback.version>1.5.34</logback.version>
+        <logback.gelf.version>6.1.2</logback.gelf.version>
 
         <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
         <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
@@ -144,8 +145,7 @@
             </exclusions>
         </dependency>
 
-        <!-- PostgreSQL JDBC -->
-
+        <!-- JDBC -->
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc11</artifactId>
@@ -156,6 +156,7 @@
             <artifactId>postgresql</artifactId>
             <version>${pgjdbc.version}</version>
         </dependency>
+
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -168,19 +169,22 @@
             <version>${logback.version}</version>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>de.siegmar</groupId>
+            <artifactId>logback-gelf</artifactId>
+            <version>${logback.gelf.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
     </dependencies>
 
     <build>
         <finalName>xxi-connect-server</finalName>
-
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <excludes>
-                    <exclude>logback.xml</exclude>
-                </excludes>
-            </resource>
-        </resources>
 
         <plugins>
 
@@ -197,7 +201,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Compile with Java 25 -->
+            <!-- Compile with Java 17 -->
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.plugin.version}</version>
