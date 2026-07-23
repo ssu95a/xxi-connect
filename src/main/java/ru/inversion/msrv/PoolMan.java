@@ -3,6 +3,9 @@ package ru.inversion.msrv;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
+import com.zaxxer.hikari.metrics.micrometer.MicrometerMetricsTrackerFactory;
+import io.micrometer.core.instrument.MeterRegistry;
+
 import ru.inversion.msrv.config.Configuration;
 import ru.inversion.msrv.tech_cred.TechCredentialsProvider;
 import ru.inversion.utils.S;
@@ -10,7 +13,6 @@ import ru.inversion.utils.S;
 import javax.sql.DataSource;
 import java.lang.invoke.MethodHandles;
 import java.net.PasswordAuthentication;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,10 +37,13 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
     private final Configuration config;
     private final TechCredentialsProvider techProvider;
 
+    private final MeterRegistry meterRegistry;
+
     /** */
-    private PoolMan( Configuration config, TechCredentialsProvider techProvider, HikariDataSource ds ) {
+    private PoolMan( Configuration config, TechCredentialsProvider techProvider, MeterRegistry meterRegistry, HikariDataSource ds ) {
         this.config       = Objects.requireNonNull(config, "config");
         this.techProvider = Objects.requireNonNull(techProvider, "techProvider");
+        this.meterRegistry = Objects.requireNonNull(meterRegistry, "meterRegistry");
         this.dataSourceRef.set(Objects.requireNonNull(ds, "ds"));
     }
 
@@ -97,7 +102,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
      *
      * Подходит для применения новых pool.* / ds.* overrides.
      * Не перечитывает tlp snapshot.
-     */
+
     public boolean hardReset() {
 
         final HikariDataSource fresh;
@@ -151,7 +156,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
             return false;
         }
     }
-
+     */
     /**
      * Аварийное пересоздание datasource:
      *  - создаём новый пул
@@ -159,7 +164,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
      *  - старый закрываем немедленно
      *
      * Может оборвать in-flight запросы.
-     */
+
     public boolean hardResetEmergency() {
         final HikariDataSource fresh;
         try {
@@ -204,7 +209,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
             return false;
         }
     }
-
+     */
     @Override
     public void close( ) {
         poolLock.lock();
@@ -286,7 +291,7 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
     }
 
     /** */
-    private static HikariDataSource createAndInitDataSource( Configuration config, TechCredentialsProvider techProvider )
+    private static HikariDataSource createAndInitDataSource( Configuration config, TechCredentialsProvider techProvider, MeterRegistry meterRegistry )
     {
         final PasswordAuthentication techAuth = techProvider.get();
         final HikariConfig hc = new HikariConfig();
@@ -313,13 +318,17 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
         if(!S.isNullOrEmpty(testQuery) )
             hc.setConnectionTestQuery(testQuery);
 
+        hc.setMetricsTrackerFactory(
+            new MicrometerMetricsTrackerFactory(meterRegistry)
+        );
+
         applyDataSourceProperties( hc, config);
 
         return new HikariDataSource(hc);
     }
 
-    public static PoolMan createAndInit(Configuration config, TechCredentialsProvider techProvider) {
-        HikariDataSource ds = createAndInitDataSource( config, techProvider );
-        return new PoolMan(config, techProvider, ds);
+    public static PoolMan createAndInit(Configuration config, TechCredentialsProvider techProvider, MeterRegistry meterRegistry) {
+        HikariDataSource ds = createAndInitDataSource( config, techProvider, meterRegistry );
+        return new PoolMan(config, techProvider, meterRegistry, ds);
     }
 }

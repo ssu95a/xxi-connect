@@ -8,9 +8,7 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import ru.inversion.msrv.config.Config;
 import ru.inversion.msrv.config.PreparedObjectRegistry;
-import ru.inversion.msrv.metrics.LogMetricsPublisher;
-import ru.inversion.msrv.metrics.MetricsFilter;
-import ru.inversion.msrv.metrics.MetricsPublisher;
+import ru.inversion.msrv.metrics.*;
 import ru.inversion.msrv.tech_cred.TechCredentialsProvider;
 import ru.inversion.utils.AutoCloseableList;
 
@@ -63,12 +61,15 @@ public final class XXIConnectApp {
             final PreparedObjectRegistry registry = new PreparedObjectRegistry(config);
             al.add(registry);
 
-            final boolean metricsEnabled = config.get("metrics.enabled", Boolean.class, false);
+            final boolean metricsEnabled = Boolean.TRUE.equals(config.get("metrics.enabled", Boolean.class, false));
+
+            final PrometheusMetrics prometheusMetrics = new PrometheusMetrics();
+            al.add(prometheusMetrics);
 
             final TechCredentialsProvider techAuthProvider = TechCredentialsProvider.createDefault(config);
             al.add(techAuthProvider);
 
-            final TargetRegistry targetRegistry = new TargetRegistry(config, techAuthProvider);
+            final TargetRegistry targetRegistry = new TargetRegistry(config, techAuthProvider, prometheusMetrics.registry() );
             al.add(targetRegistry);
 
             final MetricsPublisher metricsPublisher = new LogMetricsPublisher(metricsEnabled);
@@ -91,23 +92,23 @@ public final class XXIConnectApp {
             ctx.setContextPath("/");
 
             ctx.addFilter(
-                    new FilterHolder(new MetricsFilter(metricsPublisher, serverInstanceId, metricsEnabled)),
-                    "/*",
-                    EnumSet.of(DispatcherType.REQUEST)
+                new FilterHolder(new MetricsFilter(metricsPublisher, serverInstanceId, metricsEnabled)),
+                "/*",
+                EnumSet.of(DispatcherType.REQUEST)
             );
 
             ctx.addFilter(
-                    new FilterHolder(new ErrorHandlingFilter()),
-                    "/*",
-                    EnumSet.of(DispatcherType.REQUEST)
+                new FilterHolder(new ErrorHandlingFilter()),
+                "/*",
+                EnumSet.of(DispatcherType.REQUEST)
             );
 
             ctx.addFilter(
-                    new FilterHolder(
-                            new SecurityHeadersFilter(true)
-                    ),
-                    "/*",
-                    EnumSet.of(DispatcherType.REQUEST)
+                new FilterHolder(
+                        new SecurityHeadersFilter(true)
+                ),
+                "/*",
+                EnumSet.of(DispatcherType.REQUEST)
             );
 
             ctx.addFilter (
@@ -119,9 +120,9 @@ public final class XXIConnectApp {
             ctx.addServlet( new ServletHolder(new StateServlet(targetRegistry,config)), "/state/*" );
 
             ctx.addFilter(
-                    new FilterHolder(new AdminFilter(config)),
-                    "/admin/*",
-                    EnumSet.of(DispatcherType.REQUEST)
+                new FilterHolder(new AdminFilter(config)),
+                "/admin/*",
+                EnumSet.of(DispatcherType.REQUEST)
             );
             ctx.addServlet(new ServletHolder(new AdminServlet(config, targetRegistry, () -> {
                 try {
@@ -130,6 +131,13 @@ public final class XXIConnectApp {
                     throw new RuntimeException("Failed to stop server", e);
                 }
             })), "/admin/*");
+
+            ctx.addServlet(
+                    new ServletHolder(
+                            new PrometheusServlet(prometheusMetrics.registry())
+                    ),
+                    "/metrics"
+            );
 
             server.setHandler(ctx);
 

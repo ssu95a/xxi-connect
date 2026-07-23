@@ -11,6 +11,7 @@ import ru.inversion.utils.S;
 import ru.inversion.utils.U;
 import ru.inversion.utils.dco.Dco;
 import ru.inversion.utils.dco.IDco;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import java.io.File;
 import java.lang.invoke.MethodHandles;
@@ -55,15 +56,18 @@ public final class TargetRegistry implements AutoCloseable {
     /** */
     private final String smonAlias;
 
+    private final MeterRegistry meterRegistry;
+
     /**
      * Конструктор сразу грузит targets.xml.
      * <p>
      * Любая ошибка конфигурации валит старт сервиса.
      */
-    public TargetRegistry( Config config, TechCredentialsProvider techAuthenticator )
+    public TargetRegistry( Config config, TechCredentialsProvider techAuthenticator, MeterRegistry meterRegistry )
     {
         this.techAuthenticator = Objects.requireNonNull( techAuthenticator, "authenticator" );
         this.config            = Objects.requireNonNull( config, "config" );
+        this.meterRegistry     =  Objects.requireNonNull(meterRegistry, "meterRegistry");
 
         final Holder<String> sa= new Holder<>();
         this.targets           = loadTargetsFromXml( this.config, sa, disabledAliases );
@@ -196,7 +200,7 @@ public final class TargetRegistry implements AutoCloseable {
             final TargetConfig targetConfig = new TargetConfig( t, config, tlp );
 
             logger.info("pool.create.start alias={} vendor={}", t.nrmAlias(), t.vendorDb());
-            PoolMan created = PoolMan.createAndInit( targetConfig, () -> credentialsFor(t) );
+            PoolMan created = PoolMan.createAndInit( targetConfig, () -> credentialsFor(t), meterRegistry );
             logger.info("pool.create.ok alias={} vendor={}", t.nrmAlias(), t.vendorDb());
 
             return created;
