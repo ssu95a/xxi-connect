@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.MDC;
-import ru.inversion.msrv.metrics.Metrics;
 import ru.inversion.msrv.validation.Errors;
 import ru.inversion.msrv.validation.UnknownAliasException;
 import ru.inversion.msrv.validation.XXIConnectException;
@@ -32,7 +31,6 @@ public final class ErrorHandlingFilter implements Filter {
         final HttpServletRequest  req = (HttpServletRequest ) request;
         final HttpServletResponse rsp = (HttpServletResponse) response;
 
-        try( Metrics.Scope span = Metrics.Tools.openSpan( req, "filter", "ErrorHandlingFilter", "wrapper_time") )
         {
             String reqId = req.getHeader(REQ_ID_HEADER);
             if( S.isNullOrEmpty(reqId) )
@@ -43,22 +41,13 @@ public final class ErrorHandlingFilter implements Filter {
 
             MDC.put("rid", reqId );
 
-            span.context().put( Metrics.Key.REQ_ID, reqId );
-
             try {
                 chain.doFilter(request, response);
             }
             catch (Throwable th) {
 
-                span.fail(th);
-
                 if( rsp.isCommitted() )
                 {
-                    span.context().put(Metrics.Key.EX_CLASS,         th.getClass().getSimpleName());
-                    span.context().put(Metrics.Key.RESULT_OUTCOME,  "FAIL");
-                    span.context().put(Metrics.Key.RESULT_CLASS,    "COMMITTED_ERROR");
-                    span.context().put(Metrics.Key.RESP_HTTP_STATUS, rsp.getStatus());
-
                     if (th instanceof ServletException se) throw se;
                     if (th instanceof IOException ioe) throw ioe;
                     throw new ServletException(th);
@@ -86,12 +75,6 @@ public final class ErrorHandlingFilter implements Filter {
                 final String code = error.code();
                 final String msg = safeMsg(th, x, error, status);
                 final Errors.LogPolicy logPolicy = error.logPolicy();
-
-                span.context().put(Metrics.Key.RESP_HTTP_STATUS, status);
-                span.context().put(Metrics.Key.RESULT_OUTCOME, "FAIL");
-                span.context().put(Metrics.Key.RESULT_ERROR_CODE, code);
-                span.context().put(Metrics.Key.RESULT_CLASS, classifyResult(status) );
-                span.context().put(Metrics.Key.EX_CLASS, th.getClass().getSimpleName());
 
                 rsp.setStatus(status);
                 rsp.setHeader("Cache-Control", "no-store");

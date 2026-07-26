@@ -61,8 +61,6 @@ public final class XXIConnectApp {
             final PreparedObjectRegistry registry = new PreparedObjectRegistry(config);
             al.add(registry);
 
-            final boolean metricsEnabled = Boolean.TRUE.equals(config.get("metrics.enabled", Boolean.class, false));
-
             final PrometheusMetrics prometheusMetrics = new PrometheusMetrics();
             al.add(prometheusMetrics);
 
@@ -72,11 +70,7 @@ public final class XXIConnectApp {
             final TargetRegistry targetRegistry = new TargetRegistry(config, techAuthProvider, prometheusMetrics.registry() );
             al.add(targetRegistry);
 
-            final MetricsPublisher metricsPublisher = new LogMetricsPublisher(metricsEnabled);
-            al.add(metricsPublisher);
-
             final int port = config.get("boot.http.port", Integer.class, 8080);
-            final String serverInstanceId = config.serverInstanceId();
 
             final Server server = new Server();
             server.setStopAtShutdown(true);
@@ -92,7 +86,7 @@ public final class XXIConnectApp {
             ctx.setContextPath("/");
 
             ctx.addFilter(
-                new FilterHolder(new MetricsFilter(metricsPublisher, serverInstanceId, metricsEnabled)),
+                new FilterHolder(new RequestMetricsFilter(prometheusMetrics.registry())),
                 "/*",
                 EnumSet.of(DispatcherType.REQUEST)
             );
@@ -115,7 +109,7 @@ public final class XXIConnectApp {
                 new FilterHolder(new InputFilter(targetRegistry, registry )),"/auth/*",EnumSet.of(DispatcherType.REQUEST)
             );
 
-            ctx.addServlet( new ServletHolder(new AuthServlet()), "/auth/*");
+            ctx.addServlet( new ServletHolder(new AuthServlet(prometheusMetrics.registry())), "/auth/*");
 
             ctx.addServlet( new ServletHolder(new StateServlet(targetRegistry,config)), "/state/*" );
 
@@ -124,6 +118,16 @@ public final class XXIConnectApp {
                 "/admin/*",
                 EnumSet.of(DispatcherType.REQUEST)
             );
+
+            ctx.addServlet(
+                    new ServletHolder(
+                            new AuthServlet(
+                                    prometheusMetrics.registry()
+                            )
+                    ),
+                    "/auth/*"
+            );
+
             ctx.addServlet(new ServletHolder(new AdminServlet(config, targetRegistry, () -> {
                 try {
                     server.stop();
