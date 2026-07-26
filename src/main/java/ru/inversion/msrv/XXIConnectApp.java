@@ -119,15 +119,6 @@ public final class XXIConnectApp {
                 EnumSet.of(DispatcherType.REQUEST)
             );
 
-            ctx.addServlet(
-                    new ServletHolder(
-                            new AuthServlet(
-                                    prometheusMetrics.registry()
-                            )
-                    ),
-                    "/auth/*"
-            );
-
             ctx.addServlet(new ServletHolder(new AdminServlet(config, targetRegistry, () -> {
                 try {
                     server.stop();

@@ -39,7 +39,6 @@ public class AuthServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 
-
         String alias = null;
 
         try( AutoCloseableList cleaners = new AutoCloseableList(true) )
@@ -52,22 +51,12 @@ public class AuthServlet extends HttpServlet {
             alias = ctx.alias();
 
             final PasswordAuthentication toUse;
-
-            final Timer.Sample acquireSample = Timer.start(meterRegistry);
             final Connection connection;
 
+            final Timer.Sample acquireSample = Timer.start(meterRegistry);
+
             try {
-
                 connection = ctx.dataSource().getConnection();
-
-
-                try {
-                    toUse = ctx.vendorDb().serverSideLogin().apply( connection, auth, new Properties() );
-                } catch( XXIConnectorException ex) {
-                    throw Errors.fromConnector(ex);
-                }
-
-                cleaners.add( new PasswordAuthenticationCleaner(toUse) );
 
                 stopTimer(
                         acquireSample,
@@ -75,7 +64,8 @@ public class AuthServlet extends HttpServlet {
                         ctx,
                         "success"
                 );
-            } catch( SQLException ex ) {
+
+            } catch (SQLException ex) {
 
                 stopTimer(
                         acquireSample,
@@ -84,7 +74,52 @@ public class AuthServlet extends HttpServlet {
                         "failure"
                 );
 
-                throw Errors.unavailable( ex, "Database call failed" );
+                throw Errors.unavailable(ex, "Database call failed");
+            }
+
+            try (connection) {
+
+                final Timer.Sample dbSample = Timer.start(meterRegistry);
+
+                try {
+                    toUse = ctx.vendorDb()
+                            .serverSideLogin()
+                            .apply(connection, auth, new Properties());
+
+                    stopTimer(
+                            dbSample,
+                            "xxi.auth.db",
+                            ctx,
+                            "success"
+                    );
+
+                } catch (XXIConnectorException ex) {
+
+                    stopTimer(
+                            dbSample,
+                            "xxi.auth.db",
+                            ctx,
+                            "failure"
+                    );
+
+                    throw Errors.fromConnector(ex);
+
+                } catch (RuntimeException ex) {
+
+                    stopTimer(
+                            dbSample,
+                            "xxi.auth.db",
+                            ctx,
+                            "failure"
+                    );
+
+                    throw ex;
+                }
+
+                cleaners.add(new PasswordAuthenticationCleaner(toUse));
+
+            } catch (SQLException ex) {
+                throw Errors.unavailable(ex, "Database call failed");
             }
 
             final Timer.Sample encryptSample = Timer.start(meterRegistry);
