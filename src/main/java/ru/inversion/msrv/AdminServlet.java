@@ -50,22 +50,10 @@ public final class AdminServlet extends HttpServlet {
                 writeOk( resp, targetsXml() );
                 return;
             }
-            case "/pools/metrics" -> {
-                writeOk(resp, poolsMetricsXml());
-                return;
-            }
             case "/config/overrides" -> {
                 writeOk(resp, overridesXml());
                 return;
             }
-        }
-
-        final String[] p = PathTools.splitPath(pi);
-
-        if( p.length == 4 && "targets".equals(p[0]) && "pool".equals(p[2]) && "metrics".equals(p[3]) )
-        {
-            writeOk( resp, poolMetricsXml(p[1]) );
-            return;
         }
 
         throw Errors.badRequest( "Unknown admin endpoint" );
@@ -216,28 +204,6 @@ public final class AdminServlet extends HttpServlet {
         return d.asXml();
     }
 
-    private String poolsMetricsXml() {
-        IDco d = new Dco("adminPoolsMetrics");
-        d.e("status").set("OK");
-        IDco list = d.e("pools");
-
-        for (Map.Entry<String, Map<String, Object>> e : registry.poolMetricsAll().entrySet()) {
-            IDco item = list.e("pool");
-            item.a("alias").set(e.getKey());
-            writeMap(item, e.getValue());
-        }
-
-        return d.asXml();
-    }
-
-    /** */
-    private String poolMetricsXml(String alias) {
-        final IDco d = new Dco("adminPoolMetrics");
-        d.e("status").set("OK" );
-        d.e("alias" ).set(alias);
-        writeMap(d.e("metrics"), registry.poolMetrics(alias));
-        return d.asXml();
-    }
 
     /** */
     private String overridesXml()

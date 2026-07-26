@@ -209,30 +209,6 @@ public final class TargetRegistry implements AutoCloseable {
         return new TargetContext(t, pm);
     }
 
-    /** Метрики конкретного пула, по алиасу пула */
-    public Map<String, Object> poolMetrics( String alias ) {
-
-        final TargetItem t = target(alias);
-        final PoolMan   pm = pools.get(t.nrmAlias());
-
-        if( pm == null )
-            return Map.of( "alias", t.nrmAlias(),"poolPresent", false );
-
-        return pm.fillMetrics( );
-    }
-
-    /** Метрики всех уже созданных pool-ов. */
-    public Map<String, Map<String, Object>> poolMetricsAll() {
-
-        final Map<String, Map<String, Object>> out = new TreeMap<>();
-
-        for( Map.Entry<String, PoolMan> e : pools.entrySet() ) {
-             out.put(e.getKey(), e.getValue().fillMetrics());
-        }
-
-        return Map.copyOf(out);
-    }
-
     /**
      * Закрыть все пулы.
      */

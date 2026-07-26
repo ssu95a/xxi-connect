@@ -229,34 +229,6 @@ public final class PoolMan implements Supplier<DataSource>, AutoCloseable {
         }
     }
 
-    /** Снимок базовых метрик пула. */
-    public Map<String, Object> fillMetrics() {
-
-        HikariDataSource h = dataSourceRef.get();
-
-        if( h == null )
-            return Map.of("type", "none");
-
-        var mx = h.getHikariPoolMXBean();
-        if( mx == null ) {
-            return Map.of(
-                    "type", "hikari",
-                    "pool", h.getPoolName()
-            );
-        }
-
-        return Map.of (
-                "type", "hikari",
-                "pool",     h.getPoolName(),
-                "active",   mx.getActiveConnections(),
-                "idle",     mx.getIdleConnections(),
-                "total",    mx.getTotalConnections(),
-                "awaiting", mx.getThreadsAwaitingConnection(),
-                "maxPool",  h.getMaximumPoolSize(),
-                "minIdle",  h.getMinimumIdle()
-        );
-    }
-
     @SuppressWarnings("unchecked")
     private static <T> T value(Configuration config, String name, Class<T> type, Object defValue) {
         boolean required = (defValue == REQUIRED);

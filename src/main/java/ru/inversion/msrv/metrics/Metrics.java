@@ -104,27 +104,6 @@ public final class Metrics {
                 "ex_class"
         ),
 
-        POOL_ACTIVE(
-                "pool.active",
-                "Активные соединения",
-                "pool_active"
-        ),
-        POOL_IDLE(
-                "pool.idle",
-                "Свободные соединения",
-                "pool_idle"
-        ),
-        POOL_TOTAL(
-                "pool.total",
-                "Всего соединений",
-                "pool_total"
-        ),
-        POOL_AWAITING(
-                "pool.awaiting",
-                "Ожидающие потоки",
-                "pool_awaiting"
-        ),
-
         METRICS_COMPONENT_COUNT(
                 "metrics.component_count",
                 "Количество component metrics",

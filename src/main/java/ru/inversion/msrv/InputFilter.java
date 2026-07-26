@@ -66,8 +66,6 @@ public class InputFilter implements Filter {
 
             mc.put( Metrics.Key.AUTH_ALIAS, targetContext.alias());
             mc.put( Metrics.Key.AUTH_TARGET_VENDOR, targetContext.vendorDb().name());
-
-            fillPoolMetrics( mc, targetRegistry.poolMetrics(targetContext.alias()) );
         }
         catch (Exception ex) {
             span.fail(ex);
@@ -78,21 +76,5 @@ public class InputFilter implements Filter {
         }
 
         chain.doFilter(request, response);
-    }
-
-    /** */
-    private static void fillPoolMetrics( Metrics.Context mc, Map<String, Object> m ) {
-
-        if( mc == null || m == null || m.isEmpty() )
-            return;
-
-        m.forEach((k, v) -> {
-            switch (k) {
-                case "active"   -> mc.put(Metrics.Key.POOL_ACTIVE, v);
-                case "idle"     -> mc.put(Metrics.Key.POOL_IDLE, v);
-                case "total"    -> mc.put(Metrics.Key.POOL_TOTAL, v);
-                case "awaiting" -> mc.put(Metrics.Key.POOL_AWAITING, v);
-            }
-        });
     }
 }
