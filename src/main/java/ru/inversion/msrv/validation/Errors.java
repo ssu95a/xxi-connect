@@ -608,7 +608,7 @@ public final class Errors {
                     of(ErrorCode.INTERNAL_ERROR, e.getMessage(), e);
 
             default ->
-                    of(ErrorCode.AUTH_DENIED, e.getMessage(), e);
+                    of(ErrorCode.AUTH_DENIED, e);
         };
     }
 }
