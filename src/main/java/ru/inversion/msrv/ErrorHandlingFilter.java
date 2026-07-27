@@ -140,14 +140,6 @@ public final class ErrorHandlingFilter implements Filter {
         );
     }
 
-    private static String classifyResult(int status) {
-        if (status == 503) return "TARGET_UNAVAILABLE";
-        if (status == 401 || status == 403) return "AUTH_FAIL";
-        if (status == 409) return "CONFLICT";
-        if (status == 400) return "BAD_REQUEST";
-        if (status >= 500) return "INTERNAL_ERROR";
-        return "FAIL";
-    }
 
     /** */
     private static String authErrorXml( String reqId, String code, String msg )
