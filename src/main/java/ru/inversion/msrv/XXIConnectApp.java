@@ -58,10 +58,11 @@ public final class XXIConnectApp {
 
             final Config config = Config.make();
             al.add(config);
+
             final PreparedObjectRegistry registry = new PreparedObjectRegistry(config);
             al.add(registry);
 
-            final PrometheusMetrics prometheusMetrics = new PrometheusMetrics();
+            final PrometheusMetrics prometheusMetrics = new PrometheusMetrics(config);
             al.add(prometheusMetrics);
 
             final TechCredentialsProvider techAuthProvider = TechCredentialsProvider.createDefault(config);
