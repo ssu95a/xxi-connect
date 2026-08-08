@@ -1,11 +1,19 @@
 package ru.inversion.msrv.metrics;
 
-import io.micrometer.core.instrument.binder.jvm.*;
+import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmInfoMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.logging.LogbackMetrics;
+import io.micrometer.core.instrument.binder.system.DiskSpaceMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
+
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+
 import ru.inversion.msrv.config.Config;
 
 import java.io.File;
@@ -14,6 +22,7 @@ public final class PrometheusMetrics implements AutoCloseable {
 
     private final PrometheusMeterRegistry registry;
     private final JvmGcMetrics gcMetrics;
+    private final LogbackMetrics logbackMetrics;
 
     public PrometheusMetrics(Config config) {
 
@@ -34,7 +43,7 @@ public final class PrometheusMetrics implements AutoCloseable {
         new JvmCompilationMetrics().bindTo(registry);
         new DiskSpaceMetrics(new File(System.getProperty("user.dir"))).bindTo(registry);
 
-        LogbackMetrics logbackMetrics = new LogbackMetrics();
+        logbackMetrics = new LogbackMetrics();
         logbackMetrics.bindTo(registry);
 
     }
@@ -45,6 +54,7 @@ public final class PrometheusMetrics implements AutoCloseable {
 
     @Override
     public void close() {
+        logbackMetrics.close();
         gcMetrics.close();
         registry.close();
     }
