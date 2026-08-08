@@ -15,8 +15,7 @@ public class PGInitializer implements IVendorDBSpecificInitializer {
         hc.addDataSourceProperty( "escapeSyntaxCallMode", "callIfNoReturn" );
 
         String poolName = hc.getPoolName();
-        if( !S.isNullOrEmpty(poolName) ) {
-            poolName += "-pg";
+        if(!S.isNullOrEmpty(poolName) ) {
             hc.setPoolName( poolName );
         }
 
